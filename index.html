@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bacteria Growth Prediction: Milne's & Taylor's Method</title>
+    <style>
+        /* Basic Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Body Styling */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7f9fc;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        /* Container Styling */
+        .container {
+            width: 100%;
+            max-width: 800px;
+            padding: 30px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Header Styling */
+        .header {
+            padding-bottom: 10px;
+            border-bottom: 2px solid #4CAF50;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #4CAF50;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        h2 {
+            color: #555;
+            font-size: 20px;
+            font-weight: normal;
+        }
+
+        /* Input Styling */
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        label {
+            text-align: left;
+            font-weight: bold;
+            margin-left: 5px;
+            color: #555;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        /* Button Styling */
+        .button-section {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        /* Output Styling */
+        #output {
+            font-family: monospace;
+            color: #333;
+            font-size: 16px;
+            background: #f1f1f1;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        /* Chart Container Styling */
+        #chart-container {
+            width: 100%;
+            max-width: 700px;
+            margin: auto;
+        }
+
+        /* Footer Styling */
+        .footer {
+            font-size: 14px;
+            color: #777;
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Bacteria Growth Prediction</h1>
+            <h2>Using Milne's and Taylor's Method</h2>
+        </div>
+
+        <p>
+            Enter values below to model bacteria population growth using a logistic growth equation.
+            Click a button to predict population growth with Milne's or Taylor's method.
+        </p>
+
+        <div class="input-section">
+            <label>Initial Population (y₀):</label>
+            <input type="number" id="initialPopulation" value="10">
+
+            <label>Growth Rate (r):</label>
+            <input type="number" step="0.01" id="growthRate" value="0.2">
+
+            <label>Carrying Capacity (K):</label>
+            <input type="number" id="carryingCapacity" value="500">
+
+            <label>Time Step (h in hours):</label>
+            <input type="number" step="0.1" id="timeStep" value="0.5">
+
+            <label>Number of Steps:</label>
+            <input type="number" id="numSteps" value="20">
+        </div>
+
+        <div class="button-section">
+            <button onclick="calculateMilne()">Predict with Milne's Method</button>
+            <button onclick="calculateTaylor()">Predict with Taylor's Method</button>
+        </div>
+
+        <div id="output"></div>
+
+        <div id="chart-container">
+            <canvas id="growthChart"></canvas>
+        </div>
+    </div>
+
+    <div class="footer">
+        © 2024 Bacteria Growth Predictor. Designed for learning and educational purposes.
+    </div>
+
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let growthChart;
+
+        function getInputValues() {
+            return {
+                initialPopulation: parseFloat(document.getElementById("initialPopulation").value),
+                growthRate: parseFloat(document.getElementById("growthRate").value),
+                carryingCapacity: parseFloat(document.getElementById("carryingCapacity").value),
+                timeStep: parseFloat(document.getElementById("timeStep").value),
+                numSteps: parseInt(document.getElementById("numSteps").value)
+            };
+        }
+
+        function logisticGrowth(y, r, K) {
+            return r * y * (1 - y / K);
+        }
+
+        function updateChart(labels, data) {
+            if (growthChart) growthChart.destroy();
+
+            const ctx = document.getElementById('growthChart').getContext('2d');
+            growthChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Population Size',
+                        backgroundColor: 'rgba(76, 175, 80, 0.3)',
+                        borderColor: 'rgba(76, 175, 80, 1)',
+                        data: data
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: 'Time (hours)' } },
+                        y: { title: { display: true, text: 'Population' }, beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function calculateMilne() {
+            const { initialPopulation, growthRate, carryingCapacity, timeStep, numSteps } = getInputValues();
+
+            let y = initialPopulation;
+            let t = 0;
+            let labels = [];
+            let data = [];
+
+            for (let i = 0; i <= numSteps; i++) {
+                labels.push(t.toFixed(1));
+                data.push(y.toFixed(2));
+
+                let predictor = y + timeStep * logisticGrowth(y, growthRate, carryingCapacity); // Predictor step
+                let corrector = y + (timeStep / 2) * (logisticGrowth(y, growthRate, carryingCapacity) + logisticGrowth(predictor, growthRate, carryingCapacity)); // Corrector step
+                y = corrector;
+                t += timeStep;
+            }
+
+            document.getElementById("output").innerHTML = `Milne's Method: Predicted population at t = ${t.toFixed(1)}h is approximately ${y.toFixed(2)}`;
+            updateChart(labels, data);
+        }
+
+        function calculateTaylor() {
+            const { initialPopulation, growthRate, carryingCapacity, timeStep, numSteps } = getInputValues();
+
+            let y = initialPopulation;
+            let t = 0;
+            let labels = [];
+            let data = [];
+
+            for (let i = 0; i <= numSteps; i++) {
+                labels.push(t.toFixed(1));
+                data.push(y.toFixed(2));
+
+                let dy = logisticGrowth(y, growthRate, carryingCapacity); // First derivative
+                let d2y = growthRate * dy * (1 - 2 * y / carryingCapacity); // Second derivative for Taylor expansion
+
+                y = y + timeStep * dy + (timeStep * timeStep * d2y) / 2; // Taylor series approximation
+                t += timeStep;
+            }
+
+            document.getElementById("output").innerHTML = `Taylor's Method: Predicted population at t = ${t.toFixed(1)}h is approximately ${y.toFixed(2)}`;
+            updateChart(labels, data);
+        }
+    </script>
+</body>
+</html>
